@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Search Scraper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink:#16161a; --paper:#f4f2ec; --surface:#fff; --line:#e7e3d9;
+      --muted:#73706a; --link:#1d4ed8; --green:#15803d; --pill:#f0ece3; --mark:#fcf0bf;
+      --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+      --display:'Space Grotesk',sans-serif;
+      --mono:'JetBrains Mono',ui-monospace,monospace;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 64px 20px 96px;
+    }
+
+    .wrap { width: 100%; max-width: 720px; }
+
+    /* Brand */
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 40px; }
+    .mark { position: relative; width: 38px; height: 38px; border-radius: 11px; background: var(--ink); flex: none; }
+    .mark .ring { position: absolute; top: 10px; left: 9px; width: 13px; height: 13px; border: 2px solid var(--paper); border-radius: 50%; }
+    .mark .handle { position: absolute; top: 21px; left: 21px; width: 2px; height: 8px; background: var(--paper); border-radius: 2px; transform: rotate(-45deg); transform-origin: top; }
+    .wordmark { font-family: var(--mono); font-size: 12px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; }
+
+    /* Hero */
+    h1 { font-family: var(--display); font-size: 34px; line-height: 1.12; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 12px; max-width: 16ch; }
+    .subtitle { font-size: 16px; line-height: 1.55; color: var(--muted); margin-bottom: 28px; max-width: 46ch; }
+
+    /* Search field */
+    .search-box {
+      display: flex; gap: 8px; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 14px; padding: 7px;
+      box-shadow: 0 1px 2px rgba(20,20,26,.04), 0 8px 24px -16px rgba(20,20,26,.18);
+    }
+    input[type="search"] {
+      flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+      font-family: inherit; font-size: 16px; color: var(--ink); padding: 11px 14px;
+    }
+    input[type="search"]:focus { box-shadow: 0 0 0 3px rgba(29,78,216,.16); border-radius: 9px; }
+    .search-btn {
+      flex: none; border: none; border-radius: 9px; background: var(--ink); color: var(--paper);
+      font-family: var(--display); font-weight: 600; font-size: 15px; padding: 0 24px;
+      cursor: pointer; transition: background .15s;
+    }
+    .search-btn:hover:not(:disabled) { background: #2c2b2e; }
+    .search-btn:active:not(:disabled) { background: #000; }
+    .search-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* Example chips */
+    .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; align-items: center; }
+    .examples .label { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: #a8a499; }
+    .chip {
+      border: 1px solid var(--line); background: #fbfaf6; color: #44424a; border-radius: 999px;
+      font-family: inherit; font-size: 13.5px; padding: 7px 14px; cursor: pointer; transition: all .15s;
+    }
+    .chip:hover { border-color: var(--ink); color: var(--ink); background: var(--surface); }
+
+    /* Output area */
+    #output { margin-top: 28px; }
+
+    /* Results meta */
+    .meta { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+    .meta p { font-size: 14px; color: var(--muted); }
+    .meta strong { color: var(--ink); font-weight: 600; }
+    .query-pill { font-family: var(--mono); background: var(--pill); color: var(--ink); padding: 2px 8px; border-radius: 6px; font-size: 12.5px; }
+    .export-bar { display: flex; gap: 8px; }
+    .export-btn {
+      display: flex; align-items: center; gap: 6px; border: 1px solid #d8d4c9; background: var(--surface);
+      color: var(--ink); border-radius: 9px; font-family: var(--mono); font-size: 12.5px;
+      letter-spacing: .04em; padding: 8px 14px; cursor: pointer; transition: background .15s;
+    }
+    .export-btn:hover { background: var(--paper); }
+    .export-btn .arrow { opacity: .55; }
+
+    /* Result cards */
+    .results { display: flex; flex-direction: column; gap: 12px; }
+    .result-card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+      padding: 18px 20px; display: flex; gap: 16px;
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+    }
+    .result-card:hover { border-color: var(--ink); box-shadow: 0 8px 22px -14px rgba(20,20,26,.3); transform: translateY(-1px); }
+    .result-position { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--muted); background: var(--pill); border-radius: 7px; padding: 5px 8px; height: fit-content; flex: none; }
+    .result-body { flex: 1; min-width: 0; }
+    .result-title { font-family: var(--display); font-size: 17px; font-weight: 600; color: var(--link); text-decoration: none; line-height: 1.3; display: block; margin-bottom: 5px; }
+    .result-title:hover { text-decoration: underline; }
+    .result-url { font-family: var(--mono); font-size: 12.5px; color: var(--green); word-break: break-all; margin-bottom: 7px; }
+    .result-desc { font-size: 14px; line-height: 1.55; color: #44424a; }
+    mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+    /* Skeletons */
+    @keyframes scPulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+    .skel-card { background: var(--surface); border: 1px solid #ece8df; border-radius: 14px; padding: 18px 20px; display: flex; gap: 16px; }
+    .skel-pos { width: 34px; height: 22px; border-radius: 7px; background: #ece8df; animation: scPulse 1.4s ease-in-out infinite; flex: none; }
+    .skel-body { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+    .skel-line { border-radius: 5px; background: #ece8df; animation: scPulse 1.4s ease-in-out infinite; }
+
+    /* Error */
+    .error-msg { display: flex; gap: 12px; align-items: flex-start; background: #fdecea; border: 1px solid #f3c7c0; border-radius: 12px; padding: 16px 18px; color: #a12d1f; font-size: 14.5px; line-height: 1.5; }
+    .error-msg .bang { font-family: var(--mono); font-weight: 500; flex: none; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 48px 20px; }
+    .empty .title { font-family: var(--display); font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+    .empty .hint { font-size: 14px; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <div class="wrap">
+    <div class="brand">
+      <div class="mark"><span class="ring"></span><span class="handle"></span></div>
+      <span class="wordmark">Search Scraper</span>
+    </div>
+
+    <h1>Získejte čisté organické výsledky vyhledávání.</h1>
+    <p class="subtitle">Zadejte klíčové slovní spojení a stáhněte si výsledky jako JSON nebo CSV.</p>
+
+    <div class="search-box">
+      <input
+        type="search"
+        id="query"
+        placeholder="Zadejte hledaný výraz…"
+        maxlength="300"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Vyhledávací dotaz"
+      />
+      <button class="search-btn" id="searchBtn" onclick="doSearch()" aria-label="Hledat">Hledat</button>
+    </div>
+
+    <div class="examples" id="examples" role="group" aria-label="Příklady dotazů">
+      <span class="label">Zkuste</span>
+    </div>
+
+    <div id="output" role="region" aria-live="polite" aria-label="Výsledky vyhledávání"></div>
+  </div>
+
+  <script>
+    "use strict";
+
+    var _lastResults = null;
+    var _lastQuery   = "";
+
+    var EXAMPLES = ["nejlepší kávovar 2026", "počasí Praha", "letenky do Tokia"];
+
+    document.getElementById("query").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") doSearch();
+    });
+
+    // ── Example chips ─────────────────────────────────────────────────────────
+    (function buildExamples() {
+      var box = document.getElementById("examples");
+      EXAMPLES.forEach(function (t) {
+        var b = document.createElement("button");
+        b.className = "chip";
+        b.type = "button";
+        b.textContent = t;
+        b.addEventListener("click", function () {
+          document.getElementById("query").value = t;
+          doSearch();
+        });
+        box.appendChild(b);
+      });
+    })();
+
+    function setExamplesVisible(v) {
+      document.getElementById("examples").style.display = v ? "flex" : "none";
+    }
+
+    function setText(el, text) { el.textContent = String(text == null ? "" : text); }
+
+    /**
+     * Vrací DocumentFragment se zvýrazněnými výskyty hledaných slov.
+     * Bezpečné: každý úsek vkládáme jako textový uzel, nikdy ne innerHTML.
+     */
+    function highlight(text, terms) {
+      var frag = document.createDocumentFragment();
+      var str = String(text == null ? "" : text);
+      if (!terms.length) { frag.appendChild(document.createTextNode(str)); return frag; }
+      var esc = terms.map(function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); });
+      var re = new RegExp("(" + esc.join("|") + ")", "gi");
+      var last = 0, m;
+      while ((m = re.exec(str))) {
+        if (m.index > last) frag.appendChild(document.createTextNode(str.slice(last, m.index)));
+        var mk = document.createElement("mark");
+        mk.textContent = m[0];
+        frag.appendChild(mk);
+        last = m.index + m[0].length;
+        if (m.index === re.lastIndex) re.lastIndex++;
+      }
+      if (last < str.length) frag.appendChild(document.createTextNode(str.slice(last)));
+      return frag;
+    }
+
+    function buildCard(r, terms) {
+      var card = document.createElement("div");
+      card.className = "result-card";
+
+      var pos = document.createElement("span");
+      pos.className = "result-position";
+      setText(pos, String(r.position == null ? "" : r.position).padStart(2, "0"));
+
+      var body = document.createElement("div");
+      body.className = "result-body";
+
+      var link = document.createElement("a");
+      link.className = "result-title";
+      var safeUrl = /^https?:\/\//i.test(r.url) ? r.url : "#";
+      link.setAttribute("href", safeUrl);
+      link.setAttribute("target", "_blank");
+      link.setAttribute("rel", "noopener noreferrer");
+      link.appendChild(highlight(r.title, terms));
+
+      var urlDiv = document.createElement("div");
+      urlDiv.className = "result-url";
+      setText(urlDiv, r.url);
+
+      var desc = document.createElement("div");
+      desc.className = "result-desc";
+      desc.appendChild(highlight(r.description, terms));
+
+      body.append(link, urlDiv, desc);
+      card.append(pos, body);
+      return card;
+    }
+
+    function renderSkeletons(out) {
+      var widths = [["62%","38%","92%"],["54%","44%","80%"],["48%","36%","86%"]];
+      var list = document.createElement("div");
+      list.className = "results";
+      widths.forEach(function (w, i) {
+        var c = document.createElement("div");
+        c.className = "skel-card";
+        var p = document.createElement("div"); p.className = "skel-pos"; p.style.animationDelay = (i*0.15) + "s";
+        var b = document.createElement("div"); b.className = "skel-body";
+        var l1 = document.createElement("div"); l1.className = "skel-line"; l1.style.height = "15px"; l1.style.width = w[0]; l1.style.animationDelay = (i*0.15) + "s";
+        var l2 = document.createElement("div"); l2.className = "skel-line"; l2.style.height = "11px"; l2.style.width = w[1]; l2.style.background = "#f0ece3"; l2.style.animationDelay = (i*0.15+0.2) + "s";
+        var l3 = document.createElement("div"); l3.className = "skel-line"; l3.style.height = "11px"; l3.style.width = w[2]; l3.style.background = "#f0ece3"; l3.style.animationDelay = (i*0.15+0.1) + "s";
+        b.append(l1, l2, l3);
+        c.append(p, b);
+        list.appendChild(c);
+      });
+      out.appendChild(list);
+    }
+
+    async function doSearch() {
+      var rawQuery = document.getElementById("query").value.trim();
+      if (!rawQuery) return;
+
+      var btn = document.getElementById("searchBtn");
+      var out = document.getElementById("output");
+
+      btn.disabled = true;
+      btn.textContent = "Hledám…";
+      setExamplesVisible(false);
+      out.innerHTML = "";
+      renderSkeletons(out);
+
+      try {
+        var resp = await fetch("/search?q=" + encodeURIComponent(rawQuery), {
+          method: "GET",
+          headers: { "Accept": "application/json" },
+        });
+
+        var data = await resp.json();
+        out.innerHTML = "";
+
+        if (!resp.ok) {
+          renderError(out, "❌ " + (data && data.detail ? data.detail : "Chyba serveru"));
+          return;
+        }
+
+        _lastResults = data.results || [];
+        _lastQuery   = data.query || rawQuery;
+
+        if (!_lastResults.length) {
+          renderEmpty(out, _lastQuery);
+          return;
+        }
+
+        var terms = _lastQuery.trim().split(/\s+/).filter(function (t) { return t.length > 1; });
+
+        // Meta + export bar
+        var meta = document.createElement("div");
+        meta.className = "meta";
+        var p = document.createElement("p");
+        var strong = document.createElement("strong");
+        setText(strong, String(_lastResults.length));
+        var qpill = document.createElement("span");
+        qpill.className = "query-pill";
+        setText(qpill, _lastQuery);
+        p.append("Nalezeno ", strong, " výsledků pro ", qpill);
+
+        var bar = document.createElement("div");
+        bar.className = "export-bar";
+        bar.appendChild(makeExportBtn("JSON", exportJSON));
+        bar.appendChild(makeExportBtn("CSV", exportCSV));
+        meta.append(p, bar);
+        out.appendChild(meta);
+
+        var list = document.createElement("div");
+        list.className = "results";
+        _lastResults.forEach(function (r) { list.appendChild(buildCard(r, terms)); });
+        out.appendChild(list);
+
+      } catch (_) {
+        out.innerHTML = "";
+        renderError(out, "❌ Chyba připojení k serveru.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Hledat";
+      }
+    }
+
+    function makeExportBtn(label, handler) {
+      var b = document.createElement("button");
+      b.className = "export-btn";
+      b.type = "button";
+      var arrow = document.createElement("span");
+      arrow.className = "arrow";
+      arrow.textContent = "↓";
+      b.append(arrow, document.createTextNode(label));
+      b.addEventListener("click", handler);
+      return b;
+    }
+
+    function renderError(out, msg) {
+      var box = document.createElement("div");
+      box.className = "error-msg";
+      box.setAttribute("role", "alert");
+      var bang = document.createElement("span");
+      bang.className = "bang";
+      bang.textContent = "!";
+      var txt = document.createElement("span");
+      setText(txt, msg.replace(/^❌\s*/, ""));
+      box.append(bang, txt);
+      out.appendChild(box);
+    }
+
+    function renderEmpty(out, q) {
+      var box = document.createElement("div");
+      box.className = "empty";
+      var t = document.createElement("p");
+      t.className = "title";
+      setText(t, "Žádné výsledky");
+      var h = document.createElement("p");
+      h.className = "hint";
+      var pill = document.createElement("span");
+      pill.className = "query-pill";
+      setText(pill, q);
+      h.append("Pro dotaz ", pill, " jsme nic nenašli. Zkuste jiné klíčové slovo.");
+      box.append(t, h);
+      out.appendChild(box);
+    }
+
+    // ── Export ──────────────────────────────────────────────────────────────────
+
+    function exportJSON() {
+      if (!_lastResults) return;
+      var payload = JSON.stringify({ query: _lastQuery, results: _lastResults }, null, 2);
+      downloadBlob(new Blob([payload], { type: "application/json" }), buildFilename("json"));
+    }
+
+    function exportCSV() {
+      if (!_lastResults) return;
+      var BOM = "\uFEFF";
+      var header = "position,title,url,description\r\n";
+      var rows = _lastResults.map(function (r) {
+        return [r.position, csvEsc(r.title), csvEsc(r.url), csvEsc(r.description)].join(",");
+      }).join("\r\n");
+      downloadBlob(new Blob([BOM + header + rows], { type: "text/csv;charset=utf-8;" }), buildFilename("csv"));
+    }
+
+    function csvEsc(val) { return '"' + String(val == null ? "" : val).replace(/"/g, '""') + '"'; }
+
+    function buildFilename(ext) {
+      var safe = _lastQuery.replace(/[^a-z0-9а-яёА-ЯЁ_\- ]/gi, "_").trim().replace(/\s+/g, "_");
+      return "results_" + (safe || "search") + "." + ext;
+    }
+
+    function downloadBlob(blob, filename) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    }
+  </script>
+
+</body>
+</html>
