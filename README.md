@@ -2,6 +2,12 @@
 
 Web app for getting organic Google search results. Enter a query — get up to 10 results, exportable as JSON or CSV.
 
+## Screenshots
+
+| Home | Results |
+|---|---|
+| ![Home](screenshots/01_home.png) | ![Results](screenshots/02_results.png) |
+
 ## Stack
 
 - **Backend:** Python 3.11, FastAPI, SerpAPI
